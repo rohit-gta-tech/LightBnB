@@ -71,14 +71,12 @@ const addUser =  function(user) {
   users[userId] = user;
   return Promise.resolve(user);*/
   const values = [`${user.name}`, `${user.email}`, `${user.password}`];
-  console.log(values);
   return pool.query(`
     INSERT INTO users(name, email, password)
     VALUES($1, $2, $3)
     RETURNING *;
     `, values)
   .then((res) => {
-    console.log(res.rows[0]);
     return res.rows[0]
   });
 }
@@ -92,7 +90,22 @@ exports.addUser = addUser;
  * @return {Promise<[{}]>} A promise to the reservations.
  */
 const getAllReservations = function(guest_id, limit = 10) {
-  return getAllProperties(null, 2);
+  //return getAllProperties(null, 2);
+  const values = [guest_id, limit]
+  return pool.query(`
+  SELECT reservations.*, properties.*, avg(rating) as average_rating
+  FROM reservations 
+  JOIN properties ON properties.id = reservations.property_id
+  JOIN property_reviews ON reservations.id = property_reviews.reservation_id
+  WHERE reservations.guest_id = $1
+  AND end_date < now()::date
+  GROUP BY reservations.id, properties.id
+  ORDER BY start_date
+  LIMIT $2;
+    `, values)
+  .then((res) => {
+    return res.rows
+  });
 }
 exports.getAllReservations = getAllReservations;
 
